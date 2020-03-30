@@ -42,6 +42,19 @@
 }
 \urlstyle{same}
 %-------------------------------------------
+\usepackage{listings}
+%\lstset{language=C++,
+                %basicstyle=\ttfamily,
+                %keywordstyle=\color{blue}\ttfamily,
+                %stringstyle=\color{red}\ttfamily,
+                %commentstyle=\color{green}\ttfamily,
+                %morecomment=[l][\color{magenta}]{\#}
+%}
+%\lstset{
+%basicstyle=\footnotesize\Arial
+%}
+
+%-------------------------------------------
 \newtheorem{theorem}{Theorem}
 \newtheorem{acknowledgement}[theorem]{Acknowledgement}
 \newtheorem{algorithm}[theorem]{Algorithm}
@@ -67,6 +80,7 @@
 
 \begin{document}
 
+
 \title{Tutorial ELK-Beat}
 \author{Felipe Luís Pinheiro \and Marcelo Antonio}
 \date{\today}
@@ -76,6 +90,8 @@
 Este tutorial foi desenvolvido para ajudar o desenvolvedores do Compuletra a implementar aplicações em microserviços o sistema da Elastic, ELK Stack junto com o Filebeat, para realizar o log do sistema. 
 
 Usamos como exemplo uma aplicação .Net com o Serilog, porém esse sistema pode ser usado por qualquer tipo de aplicação com qualquer linguagem de programaçào. 
+
+O código fonte desse tutorial pode ser acessado no \href{https://github.com/}{github} pelo link \url{https://github.com/flpinheiro/Tutorial-ELK-Beat.git}, sintam-se livre para usa-lo e modifica-lo, se possível mantenham referência para a fonte original. 
 \end{abstract}
 
 \section{Introdução}
@@ -84,7 +100,7 @@ Nesta seção faremos uma rápida introdução das ferramentas e tecnologias utilizad
 
 \subsection{ELK Stack + Filebeat}
 
-O ELK Stack e o filebeat são mantidos e desenvolvidos pela \href{https://www.elastic.co/}{Elastic}\footnote{\url{http://www.sharelatex.com}} sendo que a versào mais recente é a 7.6 e é composto de:
+O ELK Stack e o filebeat são mantidos e desenvolvidos pela \href{https://www.elastic.co/}{Elastic}\footnote{\url{http://www.sharelatex.com}} sendo open source e de utilização gratuita e tendo a versào 7.6 como a mais recente, também possuí uma versão paga que é chamada de \href{https://www.elastic.co/cloud/}{Elastic Cloud}\footnote{\url{https://www.elastic.co/cloud/}} e é composto de:
 
 - \href{https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html}{Elasticsearch}\footnote{\url{https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html}}: um banco de dados nosql, que armazena o dados de forma indexada em formato sql de modo a ser rápido e leve e que possui uma api RESTfull.
 
@@ -94,12 +110,167 @@ O ELK Stack e o filebeat são mantidos e desenvolvidos pela \href{https://www.ela
 
 - \href{https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-overview.html}{Filebeat}\footnote{\url{https://www.elastic.co/guide/en/beats/filebeat/current/filebeat-overview.html}}: é um despachador de logs, desempenha seu papel ao lado da aplicação onde lê os logs gerado pela aplicação e despacha para o destino apropriado de modo automatico e autonomo, existem outras versões de beat da elastic, tal como o metricbeat que serve para despachar metricas de uso e o Auditbeat que serve para auditar a atividade dos usuários e dos processos, para mais informações acesse a \href{https://www.elastic.co/guide/en/beats/libbeat/7.6/index.html}{Beats plataform}\footnote{\url{https://www.elastic.co/guide/en/beats/libbeat/7.6/index.html}}. 
 
+\noindent Para mais informações consute o site da mantedora. 
+
 \subsection{.Net Framework}
 
-.Net Framework é um framewor
+.Net Framework é um framework open source, gratuito, mantido e desenvolvido pela \href{https://www.microsoft.com/}{Microsoft Corporation}\footnote{\url{https://www.microsoft.com/}} junto com a \href{https://dotnetfoundation.org/}{.Net Foundation}\footnote{\url{https://dotnetfoundation.org/}} tendo como principal linguagem o \href{https://docs.microsoft.com/pt-br/dotnet/csharp/}{C\#}\footnote{\url{https://docs.microsoft.com/pt-br/dotnet/csharp/}}, estando atualmente na versão \href{https://dotnet.microsoft.com/}{.Net Core 3.1}\footnote{\url{https://dotnet.microsoft.com/}}.
 
 \subsection{Serilog}
 
+\href{https://serilog.net/}{Serilog}\footnote{https://serilog.net/} é uma biblioteca para .Net que prove suporte para logs de diagnostico de diversas formas diferentes, sendo open source e gratuita.
+
+Neste tutorial estamos usando o serilog para arquivo com a formatação de log em formato elasticsearch e definimos toda a configuração no appsetings.json da aplicação de modo que temos uma configuração mais dinâmica e livre de codificação, pois ao mudarmos o arquivo appsettings.json somos capazesde mudar o comportamento de todo sistema de logo da aplicação sem fazer nenhuma alteração no código. 
+
 \subsection{Docker}
+
+\href{https://www.docker.com/}{Docker}\footnote{\url{https://www.docker.com/}} é uma tecnologia de virtualização de aplicações a qual permite que as aplicações sejam executadas dentro de um container com todo o ambiente necessário para seu correto funcionamento. O sistema docker é mantido e desenvolvido pela Docker inc sendo open source e gratuito.
+
+\section{Desenvolvimento}
+
+O desenvolvimento desse sistema está dividido em duas partes que são:
+
+- O ELK Stack que é executado em um servidor dedicado para essa solução.
+
+- Aplicação + Serilog + Filebeat que são executados nos servidores de aplicação.
+
+Sendo que todos os sistemas esTào configurados para serem rodados em container docker, micro serviços.
+
+Abaixo estaremos discutindo a implementação completa de cada parte do sistema a ser implementada.
+
+\subsection{ELK Stack}
+
+O códogo completo dessa parte pode ser encontrado em \url{https://github.com/flpinheiro/docker-elk.git} que é uma versão modificada de repositorio \url{https://github.com/deviantony/docker-elk.git} proposto pelo site \href{https://logz.io/blog/elk-stack-on-docker/}{Logz.io}\footnote{\url{https://logz.io/blog/elk-stack-on-docker/}}, sendo que no readme do repositorio contam todas as informações necessárias para que o seja executado o projeto, porém aqui faremos um pequeno resumo.
+
+Primeiramente é necessário fazer o clone do projeto desejado, para tanto utilize o comando:
+
+\begin{verbatim}
+git clone https://github.com/flpinheiro/docker-elk.git
+\end{verbatim}
+
+Para rodar o Stack basta executar
+
+\begin{verbatim}
+cd /docker-elk
+docker-compose up -d
+\end{verbatim}
+
+O sistema do docker automaticamente fará o download das imagens necessárias criará os volumes e as networks fará o sistema começar a funcionar, depois de alguns minutos se tudo tiver dado certo basta acessar \url{localhost:5601} para poder ter acesso ao kibana, usando o login padrão: elastic e a senha padrão: changeme, visualizando a figura \ref{fig:kibana}
+
+\begin{figure}%
+\centerline{
+\includegraphics[width=.8\columnwidth]{anexo/kibana}%
+}
+\caption{Tela Dicovery do Kibana}%
+\label{fig:kibana}%
+\end{figure}
+
+Se for a primeira vez que se acessa o kibana no seu sistema será necessário clicar em Management, veja figura \ref{fig:kibana2}, depois em Index Patterns e por fim em Create Index Pattern para poder criar um index para o Kibana, siga a numeração dos quadrados vermelhos, após criar o index volte para a tela do Discovery \ref{fig:kibana} e os logs do sistema apareceram como uma lista em ordem crescente de antiguidade.
+
+\begin{figure}%
+\centerline{
+\includegraphics[width=.8\columnwidth]{anexo/kibana2}%
+}
+\caption{Tela Management do Kibana}%
+\label{fig:kibana2}%
+\end{figure}
+
+Nas pastas elasticsearch, kibana e logstash existe uma pasta config em cada com os arquivos elasticsearch.yml, kibana.yml, logstash.yml, respectivamente, estes são os arquivos de configuração de segurança dos serviços, onde se configura as senhas e o endereço ip de funcionamento do sistema, para testes locais não é necessário nenhuma modificação neles.
+
+Na pasta logstash existe uma pasta pipeline a qual possui um arquivo logstash.conf, este arquivo define o funcionamento básico do logstash definindo seus input, filter e output como no exemplo a seguir, que é o que estamos usando nesse sistema.
+\lstset{
+tabsize=2
+}
+
+\begin{lstlisting}
+input {
+	tcp {
+		port => 5000
+	}
+	beats {
+		port => 5044
+	}
+}
+
+filter {
+	json {
+		source => "message"
+	}
+}
+
+output {
+	elasticsearch {
+		hosts => "elasticsearch:9200"
+		user => "elastic"
+		password => "changeme"
+		index => "%{[@metadata][beat]}"
+	}
+}
+\end{lstlisting}
+
+Aqui podemos ver as três partes que compoem o arquivo logstash.conf:
+\begin{description}
+	\item[input] que são as entradas do logstash, no caso a porta 5000 para acesso direto via TCP e a porta 5044 que é a porta padrão de funcionamento do filebeat.
+	\item[filter] neste caso estamos apenas fazendo um parse da mensagem de string para json, pois na aplicação já estamos tratando a os logs de modo a chegarem corretamente no ELK Stack.
+	\item[output] apenas enviamos para o elasticsearch utilizando o index ``\%{[@metadata][beat]}'' que está chegando pronto do filebeat e enviamos para o host definido no próprio elastisearch.
+\end{description}
+
+\subsection{ASP.Net Core + Serilog + Filebeat + Docker}
+
+Nesta seção trabalhamos com as explicações para construção de uma aplicação .Net desenvolvida para trabalhar em orquestração de container docker via micro serviços e posteriormente implementaresmos o serviço do serilog e o micro serviço do Filebeat.
+
+\subsection{.Net no Visual Studio IDE} 
+
+Case esteja trabalhando em Windows com o Visual Studio fica relativamente simples de criar uma aplicação dotnet e defini-la como orquestração docker, simplesmente crie a aplicação e posteriormente clique com o botão direito no projeto e selecione Add >> Container Orchestrator Support, por fim selecione o sistema operacional Linux ou Windws e pronto a orquestração docker está funcionando, execute normlamente o docker-compose e a aplicação estará funcionando. 
+
+\subsection{.Net via linha de comando}
+
+Porém caso esteja trabalhando em linux usando o visual Studio code ou outro eidtor de codido que não seja o visual Studio IDE teremos que fazer manualmente, a seguir detalhamos o processo, que também pode ser encontrado no site do docs da microsoft, nos seguintes links:
+
+- \href{https://docs.microsoft.com/pt-br/dotnet/core/docker/build-container}{Containerize um aplicativo .NET Core}
+
+- \href{https://docs.microsoft.com/pt-br/aspnet/core/host-and-deploy/docker/building-net-docker-images}{Imagens do Docker para o ASP.NET Core}
+
+Neste estudo focaremos no segundo exemplo já que estamos interessados em Aplicações Web.
+
+Abra o terminal e navegue até a pasta onde deseja salvar o projeto utilizando o comando cd, então execute o seguinte comando:
+
+\begin{verbatim}
+dotnet new mvc -o <<nome_projeto>>
+code -r <<nome_projeto>>
+\end{verbatim}
+
+crie no diretorio raiz do projeto um arquivo chamado ``Dockerfile'', sem as aspas e acrescente o seguinte código:
+
+\begin{verbatim}
+
+# https://hub.docker.com/_/microsoft-dotnet-core
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build
+WORKDIR /source
+
+# copy csproj and restore as distinct layers
+COPY *.sln .
+COPY <<nome_projeto>>/*.csproj ./<<nome_projeto>>/
+RUN dotnet restore
+
+# copy everything else and build app
+COPY <<nome_projeto>>/. ./<<nome_projeto>>/
+WORKDIR /source/<<nome_projeto>>
+RUN dotnet publish -c release -o /app --no-restore
+
+# final stage/image
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
+WORKDIR /app
+EXPOSE 80
+EXPOSE 443
+COPY --from=build /app ./
+ENTRYPOINT ["dotnet", "<<nome_projeto>>.dll"]
+
+\end{verbatim}
+
+Execute
+
+\begin
+
 
 \end{document}
