@@ -217,7 +217,7 @@ Aqui podemos ver as três partes que compoem o arquivo logstash.conf:
 
 \subsection{Serilog}
 
-Nesta Seção implementaremos em uma aplicação Web tipo mvc o sistema log da Serilog.
+Nesta Seção implementaremos em uma aplicação Web tipo mvc o sistema log da Serilog para ser usado com o Filebeat.
 
 Crie uma aplicação nova com o comando 
 \begin{verbatim}
@@ -305,13 +305,53 @@ loggerFactory.AddSerilog();
 
 Para realizar logs  utilize o \verb!ILogger! do controlador, sendo que é possível realizar logs de informações, de erros e de outros tipos. 
 
+\subsubsection{Serilog + ELK Stack}
+
+Nesta seção vamos modificar o Serilog para que ele possa enviar os logs diretamente para o Logstash ou o Elasticsearch sem o intermediário do Filebeat, para tanto só precisamos fazer algumas pequenas alteráções no appsettings.json, que deverá ficar como se segue:
+\begin{verbatim}
+  "Serilog": {
+    "Using": [ "Serilog.Formatting.Elasticsearch", 
+						"Serilog.Sinks.Elasticsearch", 
+						"Serilog.Sinks.File" ],
+    "MinimumLevel": "Debug",
+    "WriteTo": [
+      {
+        "Name": "Elasticsearch",
+        "Args": {
+					"nodeUris": "http://localhost:5000;http://remotehost:5000/",
+          "indexFormat": "custom-index-{0:yyyy.MM}",
+          "templateName": "myCustomTemplate",
+          "formatter": 
+					"Serilog.Formatting.Elasticsearch.ElasticsearchJsonFormatter,
+					Serilog.Formatting.Elasticsearch"
+        }
+      }
+    ],
+    "Enrich": [ "FromLogContext", "WithMachineName", "WithThreadId" ],
+    "Properties": {
+      "Application": "<<nome_projeto>>",
+      "Version":  "<<versao_projeto>>" 
+    }
+  }
+\end{verbatim}
+com essas modificações o serilog já estará enviando os logs diretamente para o Logstash, ou poderá enviar diretamente para o elasticsearch se for utilizado a porta 9200, que é a porta padrão do elasticsearch, mas nesse caso pode ser necessário passar a senha e o login de conexão do elasticsearch.
+
+Para mais parametros de configuração acesse \url{https://github.com/serilog/serilog-sinks-elasticsearch}.
+
+
 \subsection{ASP.Net Core + Docker}
 
 Nesta seção trabalhamos com as explicações para construção de uma aplicação .Net desenvolvida para trabalhar em orquestração de container docker via micro serviços.
 
 \subsubsection{.Net no Visual Studio IDE} 
 
-Case esteja trabalhando em Windows com o Visual Studio fica relativamente simples de criar uma aplicação dotnet e defini-la como orquestração docker, simplesmente crie a aplicação e posteriormente clique com o botão direito no projeto e selecione Add $>>$ Container Orchestrator Support, por fim selecione o sistema operacional Linux ou Windws e pronto a orquestração docker está funcionando, execute normlamente o docker-compose e a aplicação estará funcionando. 
+Case esteja trabalhando em Windows com o Visual Studio fica relativamente simples de criar uma aplicação dotnet e defini-la como orquestração docker, simplesmente crie a aplicação e posteriormente clique com o botão direito no projeto e selecione Add $>>$ Container Orchestrator Support, por fim selecione o sistema operacional Linux ou Windws e pronto a orquestração docker está funcionando, execute normalamente o docker-compose e a aplicação estará funcionando. 
+
+Para mais dúvidas veja os tutoriais da Microsoft nos links abaixo:
+\begin{enumerate}
+	\item \href{https://docs.microsoft.com/en-us/visualstudio/containers/overview?view=vs-2019}{Container Tools in Visual Studio}
+	\item \href{https://docs.microsoft.com/en-us/visualstudio/containers/tutorial-multicontainer?view=vs-2019}{Tutorial: Create a multi-container app with Docker Compose}
+\end{enumerate}
 
 \subsubsection{.Net via linha de comando}
 
@@ -405,8 +445,6 @@ docker-compose up -d
 \end{verbatim}
 
 Pronto se tudo funcionou como deveria você tem um Container sendo executado.
-
-
 
 \subsection{Filebeat}
 
