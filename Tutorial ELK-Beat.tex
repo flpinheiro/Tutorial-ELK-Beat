@@ -215,15 +215,105 @@ Aqui podemos ver as três partes que compoem o arquivo logstash.conf:
 	\item[output] apenas enviamos para o elasticsearch utilizando o index ``\%{[@metadata][beat]}'' que está chegando pronto do filebeat e enviamos para o host definido no próprio elastisearch.
 \end{description}
 
-\subsection{ASP.Net Core + Serilog + Filebeat + Docker}
+\subsection{Serilog}
 
-Nesta seção trabalhamos com as explicações para construção de uma aplicação .Net desenvolvida para trabalhar em orquestração de container docker via micro serviços e posteriormente implementaresmos o serviço do serilog e o micro serviço do Filebeat.
+Nesta Seção implementaremos em uma aplicação Web tipo mvc o sistema log da Serilog.
 
-\subsection{.Net no Visual Studio IDE} 
+Crie uma aplicação nova com o comando 
+\begin{verbatim}
+dotnet new mvc -o <<nome_projeto>>
+\end{verbatim}
+onde \verb!<<nome_projeto>>! é o nome do projeto escolhido, ou use uma aplicação já existênte, por exemplo a desenvolvida na seção anterior, recomendado.
 
-Case esteja trabalhando em Windows com o Visual Studio fica relativamente simples de criar uma aplicação dotnet e defini-la como orquestração docker, simplesmente crie a aplicação e posteriormente clique com o botão direito no projeto e selecione Add >> Container Orchestrator Support, por fim selecione o sistema operacional Linux ou Windws e pronto a orquestração docker está funcionando, execute normlamente o docker-compose e a aplicação estará funcionando. 
+Começaremos instalando os pacotes necessários para que a ferramenta funcione conforme queremos, portanto, instale:
+\begin{enumerate}
+	\item Install-Package Serilog.Sinks.File -version 4.1.0
+	\item Install-Package serilog.formatting.elasticsearch -version 8.0.1
+	\item Install-Package Serilog.Extensions.Logging -version 3.0.1
+	\item Install-Package Serilog.Settings.Configuration -version 3.1.0
+	\item Install-Package Serilog.Sinks.Elasticsearch -version 8.0.1
+\end{enumerate}
+ou 
+\begin{enumerate}
+	\item dotnet add package Serilog.Sinks.File -\,-version 4.1.0
+	\item dotnet add package serilog.formatting.elasticsearch -\,-version 8.0.1
+	\item dotnet add package Serilog.Extensions.Logging -\,-version 3.0.1
+	\item dotnet add package Serilog.Settings.Configuration -\,-version 3.1.0
+	\item dotnet add package Serilog.Sinks.Elasticsearch -\,-version 8.0.1
+\end{enumerate}
+qualquer duvida ou dificuldade procure no \url{http://www.nuget.org}, lá aparecerá os comandos exatos a serem inseridos, inclusive com a opção de versão, que está sendo omitida aqui o que fará com que o sistema instala a última versaão estável disponivel.
 
-\subsection{.Net via linha de comando}
+Inclua no appsettings.json a seguinte sequencia de código:
+\begin{verbatim}
+  "Serilog": {
+    "Using": [ "Serilog.Formatting.Elasticsearch", 
+						"Serilog.Sinks.Elasticsearch", 
+						"Serilog.Sinks.File" ],
+    "MinimumLevel": "Debug",
+    "WriteTo": [
+      {
+        "Name": "File",
+        "Args": {
+          "path": "/var/log/serilog/log.log",
+          "rollingInterval": "Hour",
+          "formatter": 
+					"Serilog.Formatting.Elasticsearch.ElasticsearchJsonFormatter,
+					Serilog.Formatting.Elasticsearch",
+          "shared": "true"
+        }
+      }
+    ],
+    "Enrich": [ "FromLogContext", "WithMachineName", "WithThreadId" ],
+    "Properties": {
+      "Application": "<<nome_projeto>>",
+      "Version":  "<<versao_projeto>>" 
+    }
+  }
+\end{verbatim}
+este são os parametros de configuração que serão usados pelo serilog para realizar os logs do sistema. 
+
+Caso esteja trabalhando em windows o path deverá ser escrito como, por exemplo, 
+\begin{verbatim}
+c:\\temp\\log\\serilog\\log.log
+\end{verbatim}
+
+Os parametros \verb!<<nome_projeto>>! e \verb!<<versao_projeto>>! serão utilizados pelo kibana e pelo elasticsearch para indexação de consulta e serão enviados juntos com os logs.
+
+Na classe Startup.cs do seu projeto faça as seguinte modificações
+
+- nos usings
+\begin{verbatim}
+using Microsoft.Extensions.Logging;
+using Serilog;
+\end{verbatim}
+
+- No Construtor adicione:
+\begin{verbatim}
+Log.Logger = new LoggerConfiguration()
+		.ReadFrom.Configuration(configuration)
+		.CreateLogger();
+\end{verbatim}
+
+- acrescente a assinatura do metodo configure:
+\begin{verbatim}
+ILoggerFactory loggerFactory
+\end{verbatim}
+e acrescente logo nas primeiras linhas do metodo
+\begin{verbatim}
+loggerFactory.AddSerilog();
+\end{verbatim}
+
+Para realizar logs  utilize o \verb!ILogger! do controlador, sendo que é possível realizar logs de informações, de erros e de outros tipos. 
+
+\subsection{ASP.Net Core + Docker}
+
+Nesta seção trabalhamos com as explicações para construção de uma aplicação .Net desenvolvida para trabalhar em orquestração de container docker via micro serviços.
+
+\subsubsection{.Net no Visual Studio IDE} 
+
+Case esteja trabalhando em Windows com o Visual Studio fica relativamente simples de criar uma aplicação dotnet e defini-la como orquestração docker, simplesmente crie a aplicação e posteriormente clique com o botão direito no projeto e selecione Add $>>$ Container Orchestrator Support, por fim selecione o sistema operacional Linux ou Windws e pronto a orquestração docker está funcionando, execute normlamente o docker-compose e a aplicação estará funcionando. 
+
+\subsubsection{.Net via linha de comando}
 
 Porém caso esteja trabalhando em linux usando o visual Studio code ou outro eidtor de codido que não seja o visual Studio IDE teremos que fazer manualmente, a seguir detalhamos o processo, que também pode ser encontrado no site do docs da microsoft, nos seguintes links:
 
@@ -237,40 +327,169 @@ Abra o terminal e navegue até a pasta onde deseja salvar o projeto utilizando o 
 
 \begin{verbatim}
 dotnet new mvc -o <<nome_projeto>>
-code -r <<nome_projeto>>
+cd <<nome_projeto>>
+code .
 \end{verbatim}
 
-crie no diretorio raiz do projeto um arquivo chamado ``Dockerfile'', sem as aspas e acrescente o seguinte código:
+O primeiro comando cria o projeto com o template mvc como o nome \verb!<<nome_projeto>>!, o segundo comando navega para dentro da pasta do projeto e por fim abrimos o Visual Studio Code com o ultimo comando.
+
+Adora crie um arquivo chamado ``Dockerfile'', sem as aspas e insira o seguinte conteúdo dentro dele.
 
 \begin{verbatim}
-
 # https://hub.docker.com/_/microsoft-dotnet-core
 FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build
 WORKDIR /source
 
 # copy csproj and restore as distinct layers
-COPY *.sln .
-COPY <<nome_projeto>>/*.csproj ./<<nome_projeto>>/
+COPY *.csproj ./
 RUN dotnet restore
 
 # copy everything else and build app
-COPY <<nome_projeto>>/. ./<<nome_projeto>>/
-WORKDIR /source/<<nome_projeto>>
-RUN dotnet publish -c release -o /app --no-restore
+COPY . ./aspnetapp/
+WORKDIR /source/aspnetapp
+RUN dotnet publish -c release -o /app 
 
 # final stage/image
 FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
 COPY --from=build /app ./
 ENTRYPOINT ["dotnet", "<<nome_projeto>>.dll"]
-
 \end{verbatim}
 
 Execute
 
-\begin
+\begin{verbatim}
+docker build -t <<nome_imagem>> .
+\end{verbatim}
+
+Este comando irá criar a imagem para o seu projeto, verifique executando o comando
+
+\begin{verbatim}
+docker images
+\end{verbatim}
+
+Caso deseje executar a imagem use
+
+\begin{verbatim}
+docker run -it --rm -p 5000:80 --name <<nome_container>> <<nome_imagem>>
+\end{verbatim}
+
+Execute em outro console
+
+\begin{verbatim}
+docker ps
+\end{verbatim}
+
+para ver seu container sendo executado, termine a execução com ``ctrl + C''.
+
+Agora crie um arquivo chamado ``docker-compose.yml'', nele acrescente o seguinte código
+
+\begin{verbatim}
+version: '3.4'
+
+services:
+  docker_mvc:
+    container_name: docker_mvc_container
+    image: docker_mvc
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:80"
+\end{verbatim}
+
+agora execute 
+
+\begin{verbatim}
+docker-compose up -d
+\end{verbatim}
+
+Pronto se tudo funcionou como deveria você tem um Container sendo executado.
+
+
+
+\subsection{Filebeat}
+
+Para utilizarmos o filebeat é importante que tenha sido feita as duas etapas anteriores no mesmo projeto, ou seja, que ele esteja configurado para realizar log utilizando o serilog e esteja configurado para ser executado em container docker via docker-compose.
+
+Crie no diretorio raiz do seu projeto, o mesmo onde se encontra o arquivo docker-compose.yml, o seguinte conjunto de pastas \verb!etc/filebeat! e dentro inclua um arquivo filebeat.yml com o seguinte conteúdo
+
+\begin{verbatim}
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/filebeat/*.log
+
+filebeat.config.modules:
+  reload.enabled: false
+	
+output.logstash:
+  hosts: ["0.0.0.0:5044"] 
+
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+  - add_docker_metadata: ~
+  - add_kubernetes_metadata: ~
+
+logging.level: debug
+logging.selectors: ["*"]
+\end{verbatim}
+este é o arquivo de configuração básica do filebeat, existem diversas outras configurações que podem ser usadas, porém essas são as minimas para que o sistema funcione corretamente.
+
+Dentro do arquivo ``docker-compose.yml'' iremos adicionar o o serviço do filebeat, mais um volume compartilhado para os dois container, de modo que o filebeat tenha acesso aos arquivos de log gerados pelo sistema. de modo que o arquivo ``docker-compose.yml'' vai ficar assim:
+\begin{verbatim}
+version: "3.4"
+
+services:
+  docker_mvc:
+    container_name: docker_mvc_container
+    image: docker_mvc
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped			
+    ports:
+      - "5000:80"
+    volumes:
+      - dotnetvolume:/var/log/serilog			
+    networks:
+      - dotnet
+			
+  filebeat:
+    container_name: beats
+    image: docker.elastic.co/beats/filebeat:7.6.1
+    user: root
+    restart: unless-stopped
+    depends_on:
+    - docker_mvc	
+    volumes:
+      - dotnetvolume:/var/log/filebeat/:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./etc/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    networks:
+      - dotnet			
+
+volumes:
+   dotnetvolume:
+networks:
+  dotnet:
+    driver: bridge			
+\end{verbatim}
+
+Pronto se estava tudo funcionando nos passos anteriores, basta executar
+\begin{verbatim}
+docker-compose up -d
+\end{verbatim}
+e você terá subido sua aplicação. 
+
+\section{Conclusão}
+
+Neste tutorial mostramos como desenvolver uma aplicação do zero usando linha de comando e Visual Studo Code e subila para conteiners docker junto com uma aplicação de filebeat para realizar as entregas de logs para um ELK Stack que estará sendo executado em um servirdor separado.
+
+Caso precise no repositorio desse tutorial, que pose ser encontrado nesse link: \url{https://github.com/flpinheiro/Tutorial-ELK-Beat.git},  existe uma pasta ``sample'' a qual é possui uma cópia dos repositorios do Docker-elk e também uma aplicação mvc implementada seguindo o passo a passo desse tutorial e rodando paralelo ao filebat.
 
 
 \end{document}

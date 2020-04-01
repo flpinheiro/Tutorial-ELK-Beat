@@ -11,14 +11,14 @@ MaxPos.x=-1
 MaxPos.y=-1
 NormalPos.left=4
 NormalPos.top=26
-NormalPos.right=1562
-NormalPos.bottom=568
+NormalPos.right=931
+NormalPos.bottom=884
 Class=LaTeXView
 Document=Tutorial ELK-Beat.tex
 
 [Frame0_View0,0]
-TopLine=272
-Cursor=14622
+TopLine=491
+Cursor=19059
 
 [SessionInfo]
 FrameCount=1

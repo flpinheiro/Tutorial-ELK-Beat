@@ -1,0 +1,34 @@
+version: "3.4"
+services:
+  docker_filebeat_service:
+    container_name: docker_filebeat_container
+    image: docker_filebeat_image
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "5000:80"
+    volumes:
+      - dotnetvolume:/var/log/serilog
+    networks:
+      - dotnet
+  filebeat:
+    container_name: beats
+    image: docker.elastic.co/beats/filebeat:7.6.1
+    user: root
+    restart: unless-stopped
+    depends_on:
+     - docker_filebeat_service
+    volumes:
+      - dotnetvolume:/var/log/filebeat/:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - ./etc/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+    networks:
+      - dotnet
+volumes:
+  dotnetvolume:
+networks:
+  dotnet:
+    driver: bridge
