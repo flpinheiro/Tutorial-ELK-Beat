@@ -87,7 +87,7 @@
 \maketitle
 
 \begin{abstract}
-Este tutorial foi desenvolvido para ajudar o desenvolvedores do Compuletra a implementar aplicações em microserviços o sistema da Elastic, ELK Stack junto com o Filebeat, para realizar o log do sistema. 
+Este tutorial foi desenvolvido para ajudar o desenvolvedores da Compuletra a implementar aplicações em microserviços o sistema da Elastic, ELK Stack junto com o Filebeat, para realizar o log do sistema. 
 
 Usamos como exemplo uma aplicação .Net com o Serilog, porém esse sistema pode ser usado por qualquer tipo de aplicação com qualquer linguagem de programaçào. 
 
@@ -100,11 +100,11 @@ Nesta seção faremos uma rápida introdução das ferramentas e tecnologias utilizad
 
 \subsection{ELK Stack + Filebeat}
 
-O ELK Stack e o filebeat são mantidos e desenvolvidos pela \href{https://www.elastic.co/}{Elastic}\footnote{\url{http://www.sharelatex.com}} sendo open source e de utilização gratuita e tendo a versào 7.6 como a mais recente, também possuí uma versão paga que é chamada de \href{https://www.elastic.co/cloud/}{Elastic Cloud}\footnote{\url{https://www.elastic.co/cloud/}} e é composto de:
+O ELK Stack e o filebeat são mantidos e desenvolvidos pela \href{https://www.elastic.co/}{Elastic}\footnote{\url{http://www.sharelatex.com}} sendo open source e de utilização gratuita e tendo a versão 7.6 como a mais recente, também possuí uma versão paga que é chamada de \href{https://www.elastic.co/cloud/}{Elastic Cloud}\footnote{\url{https://www.elastic.co/cloud/}}, sendo que são compostas de:
 
 - \href{https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html}{Elasticsearch}\footnote{\url{https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html}}: um banco de dados nosql, que armazena o dados de forma indexada em formato sql de modo a ser rápido e leve e que possui uma api RESTfull.
 
-- \href{https://www.elastic.co/guide/en/logstash/current/index.html}{Logstash}\footnote{\url{https://www.elastic.co/guide/en/logstash/current/index.html}}: um ingestor de dados que pode receber dados de várias fontes diferentes trata-los e reencaminha-los para od destinos apropriados com um formato mais adequado para o destino.
+- \href{https://www.elastic.co/guide/en/logstash/current/index.html}{Logstash}\footnote{\url{https://www.elastic.co/guide/en/logstash/current/index.html}}: um ingestor de dados que pode receber dados de várias fontes diferentes trata-los e reencaminha-los para os destinos apropriados com um formato mais adequado para o destino.
 
 - \href{https://www.elastic.co/guide/en/kibana/current/index.html}{Kibana}\footnote{\url{https://www.elastic.co/guide/en/kibana/current/index.html}} é um motor gráfico que serve para gerenciar os dados do Elasticsearch de forma fácil com o uso da api RESTfull. 
 
@@ -134,7 +134,7 @@ O desenvolvimento desse sistema está dividido em duas partes que são:
 
 - Aplicação + Serilog + Filebeat que são executados nos servidores de aplicação.
 
-Sendo que todos os sistemas esTào configurados para serem rodados em container docker, micro serviços.
+Sendo que todos os sistemas estão configurados para serem rodados em container docker, micro serviços.
 
 Abaixo estaremos discutindo a implementação completa de cada parte do sistema a ser implementada.
 
@@ -373,7 +373,7 @@ code .
 
 O primeiro comando cria o projeto com o template mvc como o nome \verb!<<nome_projeto>>!, o segundo comando navega para dentro da pasta do projeto e por fim abrimos o Visual Studio Code com o ultimo comando.
 
-Adora crie um arquivo chamado ``Dockerfile'', sem as aspas e insira o seguinte conteúdo dentro dele.
+Agora crie um arquivo chamado ``Dockerfile'', sem as aspas e insira o seguinte conteúdo dentro dele.
 
 \begin{verbatim}
 # https://hub.docker.com/_/microsoft-dotnet-core
@@ -476,7 +476,7 @@ logging.selectors: ["*"]
 \end{verbatim}
 este é o arquivo de configuração básica do filebeat, existem diversas outras configurações que podem ser usadas, porém essas são as minimas para que o sistema funcione corretamente.
 
-Dentro do arquivo ``docker-compose.yml'' iremos adicionar o o serviço do filebeat, mais um volume compartilhado para os dois container, de modo que o filebeat tenha acesso aos arquivos de log gerados pelo sistema. de modo que o arquivo ``docker-compose.yml'' vai ficar assim:
+Dentro do arquivo ``docker-compose.yml'' iremos adicionar o serviço do filebeat, mais um volume compartilhado para os dois container, de modo que o filebeat tenha acesso aos arquivos de log gerados pelo sistema de modo que o arquivo ``docker-compose.yml'' vai ficar assim:
 \begin{verbatim}
 version: "3.4"
 
